@@ -31,6 +31,7 @@ export default function CheckoutModal({
   const [account, setAccount] = useState<BankTransferAccount | null>(null);
   const [pushState, setPushState] = useState<"idle" | "asking" | "on" | "denied" | "unsupported">("idle");
   const [copiedField, setCopiedField] = useState<"amount" | "account" | null>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
 
   useEffect(() => {
     fetch("/api/payment-account")
@@ -52,6 +53,10 @@ export default function CheckoutModal({
   async function submit() {
     if (!phone.trim()) {
       setError("Enter the phone number you're sending the transfer from.");
+      return;
+    }
+    if (!acknowledged) {
+      setError("Please confirm you understand before sending.");
       return;
     }
     setError("");
@@ -187,6 +192,23 @@ export default function CheckoutModal({
                 disabled={busy}
               />
             </div>
+
+            <div className="odds-note">
+              Every pick here — including this one — has real odds of missing. That&rsquo;s not
+              fine print, it&rsquo;s on the homepage: the price buys the work, not the outcome. We
+              publish every result, win or lose, on Track Record, so you never have to take our
+              word for it. Transfers aren&rsquo;t refunded if this one doesn&rsquo;t land.
+            </div>
+            <label className="ack-row">
+              <input
+                type="checkbox"
+                checked={acknowledged}
+                onChange={(e) => setAcknowledged(e.target.checked)}
+                disabled={busy}
+              />
+              <span>I understand this pick may not win, and that this transfer isn&rsquo;t refunded either way.</span>
+            </label>
+
             {error && (
               <div style={{ color: "var(--vault)", fontSize: 12.5, marginTop: 8 }}>{error}</div>
             )}
@@ -194,7 +216,7 @@ export default function CheckoutModal({
               <button className="btn ghost" onClick={onClose} disabled={busy}>
                 Cancel
               </button>
-              <button className="btn" onClick={submit} disabled={busy || !account}>
+              <button className="btn" onClick={submit} disabled={busy || !account || !acknowledged}>
                 {busy ? "Sending…" : "I've sent the transfer"}
               </button>
             </div>
