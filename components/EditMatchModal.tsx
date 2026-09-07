@@ -59,6 +59,23 @@ export default function EditMatchModal({
     >
       <div className="modal" style={{ maxWidth: 460 }}>
         <h3>Edit match</h3>
+
+        {match.settled ? (
+          <>
+            <div className="m-note">
+              This match is settled and already showing on Track Record as{" "}
+              <strong>{match.result === "win" ? "WON" : "LOST"}</strong>. That log is proof
+              precisely because it doesn&rsquo;t change after the fact — reopen it from Manage
+              matches first if this genuinely needs a correction, then it can be edited.
+            </div>
+            <div className="m-actions">
+              <button type="button" className="btn" onClick={onClose}>
+                Got it
+              </button>
+            </div>
+          </>
+        ) : (
+        <>
         <div className="m-sub">Changes apply immediately — including to any card already on Predictions.</div>
 
         <form onSubmit={save}>
@@ -112,6 +129,8 @@ export default function EditMatchModal({
             </button>
           </div>
         </form>
+        </>
+        )}
       </div>
     </div>
   );
