@@ -260,55 +260,68 @@ export default function AdminPage() {
           Log out
         </button>
       </div>
-      <div className="banner">
-        {account ? (
-          <>
-            Payment is manual: buyers transfer to{" "}
-            <strong className="mono">{account.accountNumber}</strong> ({account.bank},{" "}
-            {account.accountName}) and submit the phone number they sent it from. Check that
-            account for a matching transfer, then confirm or reject each request below —
-            confirming is what unlocks the pick for that number.
-          </>
-        ) : (
-          "Loading payment account…"
-        )}
-      </div>
-
+      {/* Sales first — the realized proof this works. Everything else on
+          this page exists to produce or protect this number. */}
       <div className="admin-block">
-        <h2 className="section-title">Payment account</h2>
-        <p className="section-sub">
-          Where buyers send bank transfers, and what shows on the checkout screen. Changing this
-          only affects new requests — it doesn&rsquo;t relabel transfers already sent.
-        </p>
-        {account && (
-          <form className="form-grid" onSubmit={saveAccount}>
-            <div className="field">
-              <label>Bank</label>
-              <input name="bank" type="text" defaultValue={account.bank} required />
+        <h2 className="section-title">Sales</h2>
+        {sales && (
+          <>
+            <div className="dash-stats">
+              <div className="dash-tile">
+                <span className="k">Revenue</span>
+                <span className="v mono">{naira(sales.totalRevenue)}</span>
+              </div>
+              <div className="dash-tile">
+                <span className="k">Purchases</span>
+                <span className="v mono">{sales.totalPurchases}</span>
+              </div>
+              <div className="dash-tile">
+                <span className="k">Tier IV sold</span>
+                <span className="v mono">{sales.byTier[4] ?? 0}</span>
+              </div>
+              <div className="dash-tile">
+                <span className="k">Tier I sold</span>
+                <span className="v mono">{sales.byTier[1] ?? 0}</span>
+              </div>
             </div>
-            <div className="field">
-              <label>Account number</label>
-              <input
-                name="accountNumber"
-                type="text"
-                inputMode="numeric"
-                defaultValue={account.accountNumber}
-                required
-              />
+            <div className="table-wrap">
+              <table className="stack">
+                <thead>
+                  <tr>
+                    <th>Confirmed</th>
+                    <th>Fixture</th>
+                    <th>Tier</th>
+                    <th className="mono">Amount</th>
+                    <th>Buyer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sales.recent.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ color: "var(--ink-soft)" }}>
+                        No confirmed transfers yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    sales.recent.map((u) => (
+                      <tr key={u.id}>
+                        <td className="mono" data-label="Confirmed">{relTime(u.paidAt)}</td>
+                        <td data-label="Fixture">{u.matchTitle}</td>
+                        <td data-label="Tier">Tier {tierInfo(u.tier).code}</td>
+                        <td className="mono" data-label="Amount">{naira(u.amount)}</td>
+                        <td className="mono" data-label="Buyer">{u.phone}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-            <div className="field full">
-              <label>Account name</label>
-              <input name="accountName" type="text" defaultValue={account.accountName} required />
-            </div>
-            <div className="full">
-              <button className="btn" type="submit" disabled={savingAccount}>
-                {savingAccount ? "Saving…" : "Save account details"}
-              </button>
-            </div>
-          </form>
+          </>
         )}
       </div>
 
+      {/* Pending transfers second — the one action that turns the next
+          buyer's intent into the next row in Sales above. */}
       <div className="admin-block">
         <h2 className="section-title">
           Pending transfers
@@ -319,6 +332,12 @@ export default function AdminPage() {
             ? "Nothing waiting on you right now."
             : `${pending.length} request${pending.length === 1 ? "" : "s"} waiting on confirmation.`}
         </p>
+        {account && (
+          <p className="section-sub" style={{ marginTop: -14 }}>
+            Checking against <strong className="mono">{account.accountNumber}</strong> —{" "}
+            {account.bank}, {account.accountName}.
+          </p>
+        )}
         {pushState !== "on" && pushState !== "unsupported" && (
           <div className="banner banner-row" style={{ justifyContent: "space-between", marginBottom: 16 }}>
             <span>Get pinged here the moment a new transfer request comes in, even in another tab.</span>
@@ -380,105 +399,8 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="admin-block">
-        <h2 className="section-title">Sales</h2>
-        {sales && (
-          <>
-            <div className="dash-stats">
-              <div className="dash-tile">
-                <span className="k">Revenue</span>
-                <span className="v mono">{naira(sales.totalRevenue)}</span>
-              </div>
-              <div className="dash-tile">
-                <span className="k">Purchases</span>
-                <span className="v mono">{sales.totalPurchases}</span>
-              </div>
-              <div className="dash-tile">
-                <span className="k">Tier IV sold</span>
-                <span className="v mono">{sales.byTier[4] ?? 0}</span>
-              </div>
-              <div className="dash-tile">
-                <span className="k">Tier I sold</span>
-                <span className="v mono">{sales.byTier[1] ?? 0}</span>
-              </div>
-            </div>
-            <div className="table-wrap">
-              <table className="stack">
-                <thead>
-                  <tr>
-                    <th>Confirmed</th>
-                    <th>Fixture</th>
-                    <th>Tier</th>
-                    <th className="mono">Amount</th>
-                    <th>Buyer</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sales.recent.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} style={{ color: "var(--ink-soft)" }}>
-                        No confirmed transfers yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    sales.recent.map((u) => (
-                      <tr key={u.id}>
-                        <td className="mono" data-label="Confirmed">{relTime(u.paidAt)}</td>
-                        <td data-label="Fixture">{u.matchTitle}</td>
-                        <td data-label="Tier">Tier {tierInfo(u.tier).code}</td>
-                        <td className="mono" data-label="Amount">{naira(u.amount)}</td>
-                        <td className="mono" data-label="Buyer">{u.phone}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="admin-block">
-        <h2 className="section-title">Add a match</h2>
-        <form className="form-grid" onSubmit={addMatch}>
-          <div className="field">
-            <label>Fixture / title</label>
-            <input name="title" type="text" placeholder="Rivers United vs Enyimba" required />
-          </div>
-          <div className="field">
-            <label>Subtitle (optional)</label>
-            <input name="subtitle" type="text" placeholder="e.g. legs, note" />
-          </div>
-          <div className="field">
-            <label>Competition</label>
-            <input name="competition" type="text" placeholder="NPFL" required />
-          </div>
-          <div className="field">
-            <label>Kickoff</label>
-            <input name="kickoff" type="datetime-local" required />
-          </div>
-          <div className="field">
-            <label>Tier</label>
-            <select name="tier" defaultValue="1">
-              {([1, 2, 3, 4] as const).map((tn) => (
-                <option key={tn} value={tn}>
-                  Tier {TIERS[tn].code} — {TIERS[tn].name} ({naira(TIERS[tn].price)})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label>Pick</label>
-            <input name="pick" type="text" placeholder="Home win / Over 2.5 / 2-1" required />
-          </div>
-          <div className="full">
-            <button className="btn" type="submit">
-              Add match
-            </button>
-          </div>
-        </form>
-      </div>
-
+      {/* Manage matches third — the daily operational work (settle,
+          feature, edit) that keeps Pending transfers and Sales fed. */}
       <div className="admin-block">
         <h2 className="section-title">Manage matches</h2>
         <p className="section-sub">
@@ -502,7 +424,7 @@ export default function AdminPage() {
               {matches.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ color: "var(--ink-soft)" }}>
-                    No matches yet — add one above.
+                    No matches yet — add one below.
                   </td>
                 </tr>
               ) : (
@@ -561,6 +483,87 @@ export default function AdminPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Add a match fourth — extending the inventory, lower frequency
+          than managing what's already live. */}
+      <div className="admin-block">
+        <h2 className="section-title">Add a match</h2>
+        <form className="form-grid" onSubmit={addMatch}>
+          <div className="field">
+            <label>Fixture / title</label>
+            <input name="title" type="text" placeholder="Rivers United vs Enyimba" required />
+          </div>
+          <div className="field">
+            <label>Subtitle (optional)</label>
+            <input name="subtitle" type="text" placeholder="e.g. legs, note" />
+          </div>
+          <div className="field">
+            <label>Competition</label>
+            <input name="competition" type="text" placeholder="NPFL" required />
+          </div>
+          <div className="field">
+            <label>Kickoff</label>
+            <input name="kickoff" type="datetime-local" required />
+          </div>
+          <div className="field">
+            <label>Tier</label>
+            <select name="tier" defaultValue="1">
+              {([1, 2, 3, 4] as const).map((tn) => (
+                <option key={tn} value={tn}>
+                  Tier {TIERS[tn].code} — {TIERS[tn].name} ({naira(TIERS[tn].price)})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label>Pick</label>
+            <input name="pick" type="text" placeholder="Home win / Over 2.5 / 2-1" required />
+          </div>
+          <div className="full">
+            <button className="btn" type="submit">
+              Add match
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Payment account last — static configuration, set once and
+          almost never revisited. Least value per pixel, so it gets the
+          least prominent position. */}
+      <div className="admin-block">
+        <h2 className="section-title">Payment account</h2>
+        <p className="section-sub">
+          Where buyers send bank transfers, and what shows on the checkout screen. Changing this
+          only affects new requests — it doesn&rsquo;t relabel transfers already sent.
+        </p>
+        {account && (
+          <form className="form-grid" onSubmit={saveAccount}>
+            <div className="field">
+              <label>Bank</label>
+              <input name="bank" type="text" defaultValue={account.bank} required />
+            </div>
+            <div className="field">
+              <label>Account number</label>
+              <input
+                name="accountNumber"
+                type="text"
+                inputMode="numeric"
+                defaultValue={account.accountNumber}
+                required
+              />
+            </div>
+            <div className="field full">
+              <label>Account name</label>
+              <input name="accountName" type="text" defaultValue={account.accountName} required />
+            </div>
+            <div className="full">
+              <button className="btn" type="submit" disabled={savingAccount}>
+                {savingAccount ? "Saving…" : "Save account details"}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
       {editingMatch && (
