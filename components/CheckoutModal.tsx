@@ -30,6 +30,7 @@ export default function CheckoutModal({
   const [sent, setSent] = useState(false);
   const [account, setAccount] = useState<BankTransferAccount | null>(null);
   const [pushState, setPushState] = useState<"idle" | "asking" | "on" | "denied" | "unsupported">("idle");
+  const [copiedField, setCopiedField] = useState<"amount" | "account" | null>(null);
 
   useEffect(() => {
     fetch("/api/payment-account")
@@ -37,6 +38,16 @@ export default function CheckoutModal({
       .then(setAccount)
       .catch(() => setAccount(null));
   }, []);
+
+  async function copyValue(text: string, field: "amount" | "account") {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField((f) => (f === field ? null : f)), 1600);
+    } catch {
+      toast("Couldn't copy — select and copy it manually.");
+    }
+  }
 
   async function submit() {
     if (!phone.trim()) {
@@ -129,18 +140,42 @@ export default function CheckoutModal({
             <div className="m-note">
               {account ? (
                 <>
-                  Send <strong>{naira(t.price)}</strong> by bank transfer to:
-                  <br />
-                  <span className="mono">{account.accountNumber}</span> — {account.bank}
-                  <br />
-                  {account.accountName}
-                  <br />
+                  <div style={{ marginBottom: 10 }}>Send this by bank transfer:</div>
+                  <div className="copy-row">
+                    <div>
+                      <div className="copy-label">Amount</div>
+                      <div className="mono copy-value">{naira(t.price)}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn ghost small"
+                      onClick={() => copyValue(String(t.price), "amount")}
+                    >
+                      {copiedField === "amount" ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <div className="copy-row">
+                    <div>
+                      <div className="copy-label">Account number — {account.bank}</div>
+                      <div className="mono copy-value">{account.accountNumber}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn ghost small"
+                      onClick={() => copyValue(account.accountNumber, "account")}
+                    >
+                      {copiedField === "account" ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <div style={{ marginTop: 8 }}>{account.accountName}</div>
+                  <div style={{ marginTop: 10 }}>
+                    Then enter the number you sent it from below. An admin confirms every transfer
+                    by hand — this pick unlocks for that number once they do.
+                  </div>
                 </>
               ) : (
                 "Loading transfer details…"
               )}
-              Then enter the number you sent it from below. An admin confirms every transfer by
-              hand — this pick unlocks for that number once they do.
             </div>
             <div className="field">
               <label>Your phone number</label>

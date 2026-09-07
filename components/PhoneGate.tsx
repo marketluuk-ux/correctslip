@@ -11,6 +11,7 @@ export default function PhoneGate({
   onChange: (phone: string | null) => void;
 }) {
   const [me, setMe] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const [phoneInput, setPhoneInput] = useState("");
   const [checking, setChecking] = useState(false);
 
@@ -49,19 +50,36 @@ export default function PhoneGate({
   async function switchNumber() {
     await fetch("/api/me", { method: "DELETE" });
     setMe(null);
+    setExpanded(false);
     onChange(null);
   }
 
-  return me ? (
-    <div className="banner banner-row" style={{ justifyContent: "space-between" }}>
-      <span>
-        Showing picks confirmed for <strong className="mono">{me}</strong>.
-      </span>
-      <button className="btn ghost small" onClick={switchNumber}>
-        Not you? Use a different number
+  // Identified buyers always get the full banner — it's the whole point of
+  // their visit. Everyone else gets a quiet, low-weight link by default, so
+  // a first-time browser isn't opened with a post-purchase prompt before
+  // they've even seen what's for sale.
+  if (me) {
+    return (
+      <div className="banner banner-row" style={{ justifyContent: "space-between" }}>
+        <span>
+          Showing picks confirmed for <strong className="mono">{me}</strong>.
+        </span>
+        <button className="btn ghost small" onClick={switchNumber}>
+          Not you? Use a different number
+        </button>
+      </div>
+    );
+  }
+
+  if (!expanded) {
+    return (
+      <button className="phone-gate-link" onClick={() => setExpanded(true)}>
+        Already sent a transfer? Check your number →
       </button>
-    </div>
-  ) : (
+    );
+  }
+
+  return (
     <form className="banner banner-row" onSubmit={checkNumber}>
       <span>{prompt}</span>
       <input
@@ -70,6 +88,7 @@ export default function PhoneGate({
         value={phoneInput}
         onChange={(e) => setPhoneInput(e.target.value)}
         className="phone-check-input"
+        autoFocus
       />
       <button className="btn small" type="submit" disabled={checking}>
         {checking ? "Checking…" : "Check"}
