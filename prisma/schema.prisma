@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Match {
+  id          String    @id @default(cuid())
+  title       String
+  subtitle    String?
+  competition String
+  kickoffAt   DateTime
+  tier        Int
+  pick        String
+  featured    Boolean   @default(false)
+  lastFeaturedAt DateTime?
+  settled     Boolean   @default(false)
+  result      String?
+  createdAt   DateTime  @default(now())
+  unlocks     Unlock[]
+}
+
+model Unlock {
+  id          String    @id @default(cuid())
+  matchId     String
+  match       Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  phone       String
+  tier        Int
+  amount      Int
+  status      String    @default("pending") // pending | paid | rejected
+  requestedAt DateTime  @default(now())
+  confirmedAt DateTime?
+
+  @@index([phone])
+  @@index([matchId])
+  @@index([status])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  role      String   // "buyer" | "admin" | "daily" (anonymous opt-in for the daily free-pick alert)
+  phone     String?  // set when role = "buyer"
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([role])
+  @@index([phone])
+}
