@@ -7,11 +7,13 @@ import { fmtKickoff, relTime } from "@/lib/format";
 import { BankTransferAccount } from "@/lib/payment";
 import { subscribeToPush, pushSupported } from "@/lib/clientPush";
 import { toast } from "@/components/Toaster";
+import EditMatchModal from "@/components/EditMatchModal";
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [passcode, setPasscode] = useState("");
   const [matches, setMatches] = useState<ApiMatch[]>([]);
+  const [editingMatch, setEditingMatch] = useState<ApiMatch | null>(null);
   const [sales, setSales] = useState<SalesData | null>(null);
   const [pending, setPending] = useState<PendingUnlock[]>([]);
   const [account, setAccount] = useState<BankTransferAccount | null>(null);
@@ -514,6 +516,9 @@ export default function AdminPage() {
                           <span className="t">{m.title}</span>
                           <span className="s">{m.competition}</span>
                         </div>
+                        <button className="btn ghost small" style={{ marginTop: 6 }} onClick={() => setEditingMatch(m)}>
+                          Edit
+                        </button>
                       </td>
                       <td data-label="Tier">Tier {tierInfo(m.tier).code}</td>
                       <td className="mono" data-label="Kickoff">{fmtKickoff(m.kickoffAt)}</td>
@@ -557,6 +562,14 @@ export default function AdminPage() {
           </table>
         </div>
       </div>
+
+      {editingMatch && (
+        <EditMatchModal
+          match={editingMatch}
+          onClose={() => setEditingMatch(null)}
+          onSaved={loadMatches}
+        />
+      )}
     </main>
   );
 }
