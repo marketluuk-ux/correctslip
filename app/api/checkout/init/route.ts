@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { tierInfo, naira } from "@/lib/tiers";
+import { naira } from "@/lib/tiers";
+import { getTierPrices } from "@/lib/tierPricing";
 import { normalizePhone, PHONE_COOKIE } from "@/lib/phone";
 import { notifyAdmins } from "@/lib/push";
 
@@ -49,7 +50,8 @@ export async function POST(req: NextRequest) {
     where: { matchId, phone, status: "pending" },
   });
   if (!existingPending) {
-    const price = tierInfo(match.tier).price;
+    const prices = await getTierPrices();
+    const price = prices[match.tier as 1 | 2 | 3 | 4];
     await prisma.unlock.create({
       data: { matchId, phone, tier: match.tier, amount: price, status: "pending" },
     });

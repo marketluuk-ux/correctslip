@@ -8,11 +8,14 @@ import { countdownText } from "@/lib/format";
 export default function MatchCard({
   match,
   onUnlockClick,
+  price,
 }: {
   match: ApiMatch;
   onUnlockClick: (match: ApiMatch) => void;
+  price?: number;
 }) {
   const t = tierInfo(match.tier);
+  const displayPrice = price ?? t.price;
   const revealed = match.featured || match.unlocked;
   const kickedOff = new Date(match.kickoffAt).getTime() <= Date.now();
   const [clock, setClock] = useState("");
@@ -42,7 +45,10 @@ export default function MatchCard({
         </div>
       </div>
       <div className="card-foot">
-        <span className="tier-pill">Tier {t.code}</span>
+        <span>
+          <span className="tier-pill">Tier {t.code}</span>
+          {match.tier === 4 && <span className="cadence-note">comes ~weekly</span>}
+        </span>
         {match.featured ? (
           <span className="tag-unlocked">FREE PICK</span>
         ) : match.unlocked ? (
@@ -53,7 +59,7 @@ export default function MatchCard({
           </button>
         ) : (
           <button className="btn small" onClick={() => onUnlockClick(match)}>
-            Unlock — {naira(t.price)}
+            Unlock — {naira(displayPrice)}
           </button>
         )}
       </div>

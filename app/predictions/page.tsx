@@ -5,6 +5,7 @@ import { ApiMatch } from "@/lib/types";
 import MatchCard from "@/components/MatchCard";
 import CheckoutModal from "@/components/CheckoutModal";
 import PhoneGate from "@/components/PhoneGate";
+import { useTierPrices } from "@/lib/useTierPrices";
 
 const FILTERS = [
   { tier: "all", label: "All" },
@@ -18,6 +19,7 @@ export default function PredictionsPage() {
   const [matches, setMatches] = useState<ApiMatch[] | null>(null);
   const [filter, setFilter] = useState("all");
   const [checkoutMatch, setCheckoutMatch] = useState<ApiMatch | null>(null);
+  const prices = useTierPrices();
 
   const load = useCallback(() => {
     fetch("/api/matches")
@@ -63,6 +65,12 @@ export default function PredictionsPage() {
           </button>
         ))}
       </div>
+      {filter === "4" && (
+        <p className="section-sub" style={{ marginTop: -14 }}>
+          Correct Score is intentionally rare — expect a new one roughly once a week, not every
+          day. That&rsquo;s the hardest market to call, which is exactly why it&rsquo;s rationed.
+        </p>
+      )}
       {!matches ? (
         <div className="empty">Loading…</div>
       ) : list.length === 0 ? (
@@ -70,7 +78,12 @@ export default function PredictionsPage() {
       ) : (
         <div className="grid">
           {list.map((m) => (
-            <MatchCard key={m.id} match={m} onUnlockClick={setCheckoutMatch} />
+            <MatchCard
+              key={m.id}
+              match={m}
+              price={prices[m.tier as 1 | 2 | 3 | 4]}
+              onUnlockClick={setCheckoutMatch}
+            />
           ))}
         </div>
       )}

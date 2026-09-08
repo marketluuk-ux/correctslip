@@ -6,6 +6,7 @@ import { tierInfo, naira } from "@/lib/tiers";
 import { fmtKickoff } from "@/lib/format";
 import { BankTransferAccount } from "@/lib/payment";
 import { subscribeToPush, pushSupported } from "@/lib/clientPush";
+import { useTierPrices } from "@/lib/useTierPrices";
 import { toast } from "@/components/Toaster";
 
 export default function CheckoutModal({
@@ -18,6 +19,8 @@ export default function CheckoutModal({
   onUnlocked: () => void;
 }) {
   const t = tierInfo(match.tier);
+  const prices = useTierPrices();
+  const price = prices[match.tier as 1 | 2 | 3 | 4];
   const [phone, setPhone] = useState(() => {
     try {
       return localStorage.getItem("sv_last_phone") ?? "";
@@ -116,7 +119,7 @@ export default function CheckoutModal({
         <div className="m-sub">
           {match.competition} · {fmtKickoff(match.kickoffAt)}
         </div>
-        <div className="m-price mono">{naira(t.price)}</div>
+        <div className="m-price mono">{naira(price)}</div>
 
         {sent ? (
           <>
@@ -149,12 +152,12 @@ export default function CheckoutModal({
                   <div className="copy-row">
                     <div>
                       <div className="copy-label">Amount</div>
-                      <div className="mono copy-value">{naira(t.price)}</div>
+                      <div className="mono copy-value">{naira(price)}</div>
                     </div>
                     <button
                       type="button"
                       className="btn ghost small"
-                      onClick={() => copyValue(String(t.price), "amount")}
+                      onClick={() => copyValue(String(price), "amount")}
                     >
                       {copiedField === "amount" ? "Copied" : "Copy"}
                     </button>

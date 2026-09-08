@@ -6,6 +6,7 @@ import { ApiMatch } from "@/lib/types";
 import { TIERS, naira } from "@/lib/tiers";
 import MatchCard from "@/components/MatchCard";
 import { bumpStreak } from "@/lib/streak";
+import { useTierPrices } from "@/lib/useTierPrices";
 import { subscribeToPush, pushSupported } from "@/lib/clientPush";
 import { toast } from "@/components/Toaster";
 
@@ -13,6 +14,7 @@ export default function HomePage() {
   const [matches, setMatches] = useState<ApiMatch[] | null>(null);
   const [streak, setStreak] = useState(0);
   const [dailyPush, setDailyPush] = useState<"idle" | "asking" | "on" | "denied" | "unsupported">("idle");
+  const prices = useTierPrices();
 
   useEffect(() => {
     fetch("/api/matches")
@@ -145,8 +147,13 @@ export default function HomePage() {
                   </div>
                   <div className="title">{t.name}</div>
                   <div className="price mono" style={{ marginTop: 10, fontSize: 20 }}>
-                    {naira(t.price)}
+                    {naira(prices[tn])}
                   </div>
+                  {tn === 4 && (
+                    <div className="cadence-note" style={{ marginTop: 6, marginLeft: 0 }}>
+                      comes ~weekly
+                    </div>
+                  )}
                 </div>
               </Link>
             );

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ApiMatch } from "@/lib/types";
 import { TIERS, naira } from "@/lib/tiers";
+import { useTierPrices } from "@/lib/useTierPrices";
 import { toast } from "@/components/Toaster";
 
 function toLocalInputValue(iso: string) {
@@ -21,6 +22,7 @@ export default function EditMatchModal({
   onSaved: () => void;
 }) {
   const [saving, setSaving] = useState(false);
+  const prices = useTierPrices();
 
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -105,7 +107,7 @@ export default function EditMatchModal({
             <select name="tier" defaultValue={String(match.tier)}>
               {([1, 2, 3, 4] as const).map((tn) => (
                 <option key={tn} value={tn}>
-                  Tier {TIERS[tn].code} — {TIERS[tn].name} ({naira(TIERS[tn].price)})
+                  Tier {TIERS[tn].code} — {TIERS[tn].name} ({naira(prices[tn])})
                 </option>
               ))}
             </select>

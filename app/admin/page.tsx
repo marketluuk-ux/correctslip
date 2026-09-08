@@ -8,6 +8,7 @@ import { BankTransferAccount } from "@/lib/payment";
 import { subscribeToPush, pushSupported } from "@/lib/clientPush";
 import { toast } from "@/components/Toaster";
 import EditMatchModal from "@/components/EditMatchModal";
+import type { TierPricesMap } from "@/lib/useTierPrices";
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -18,6 +19,8 @@ export default function AdminPage() {
   const [pending, setPending] = useState<PendingUnlock[]>([]);
   const [account, setAccount] = useState<BankTransferAccount | null>(null);
   const [savingAccount, setSavingAccount] = useState(false);
+  const [tierPrices, setTierPrices] = useState<TierPricesMap | null>(null);
+  const [savingPrices, setSavingPrices] = useState(false);
   const [pushState, setPushState] = useState<"idle" | "asking" | "on" | "denied" | "unsupported">("idle");
   const baseTitle = useRef<string>("");
 
@@ -37,6 +40,12 @@ export default function AdminPage() {
     fetch("/api/admin/payment-account")
       .then((r) => r.json())
       .then(setAccount);
+  }, []);
+
+  const loadTierPrices = useCallback(() => {
+    fetch("/api/admin/tier-prices")
+      .then((r) => r.json())
+      .then(setTierPrices);
   }, []);
 
   const loadSales = useCallback(() => {
@@ -59,8 +68,9 @@ export default function AdminPage() {
       loadMatches();
       loadPending();
       loadAccount();
+      loadTierPrices();
     }
-  }, [authed, loadMatches, loadPending, loadAccount]);
+  }, [authed, loadMatches, loadPending, loadAccount, loadTierPrices]);
 
   // Poll for new pending transfers while this tab is open — the push
   // notification (if granted) covers the "tab closed" case; this covers
@@ -117,6 +127,31 @@ export default function AdminPage() {
     if (res.ok) {
       toast("Payment account updated.");
       loadAccount();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast(d.error || "Could not save.");
+    }
+  }
+
+  async function saveTierPrices(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const body = {
+      1: fd.get("price1"),
+      2: fd.get("price2"),
+      3: fd.get("price3"),
+      4: fd.get("price4"),
+    };
+    setSavingPrices(true);
+    const res = await fetch("/api/admin/tier-prices", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setSavingPrices(false);
+    if (res.ok) {
+      toast("Tier prices updated.");
+      loadTierPrices();
     } else {
       const d = await res.json().catch(() => ({}));
       toast(d.error || "Could not save.");
@@ -511,7 +546,7 @@ export default function AdminPage() {
             <select name="tier" defaultValue="1">
               {([1, 2, 3, 4] as const).map((tn) => (
                 <option key={tn} value={tn}>
-                  Tier {TIERS[tn].code} — {TIERS[tn].name} ({naira(TIERS[tn].price)})
+                  Tier {TIERS[tn].code} — {TIERS[tn].name} ({naira(tierPrices?.[tn] ?? TIERS[tn].price)})
                 </option>
               ))}
             </select>
@@ -526,6 +561,40 @@ export default function AdminPage() {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Tier pricing — also static config, touched about as rarely as the
+          payment account. */}
+      <div className="admin-block">
+        <h2 className="section-title">Tier pricing</h2>
+        <p className="section-sub">
+          What each tier costs to unlock. Changing this only affects new purchases — sales
+          already confirmed keep the amount that was actually charged.
+        </p>
+        {tierPrices && (
+          <form className="form-grid" onSubmit={saveTierPrices}>
+            {([1, 2, 3, 4] as const).map((tn) => (
+              <div className="field" key={tn}>
+                <label>
+                  Tier {TIERS[tn].code} — {TIERS[tn].name}
+                </label>
+                <input
+                  name={`price${tn}`}
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  defaultValue={tierPrices[tn]}
+                  required
+                />
+              </div>
+            ))}
+            <div className="full">
+              <button className="btn" type="submit" disabled={savingPrices}>
+                {savingPrices ? "Saving…" : "Save prices"}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
       {/* Payment account last — static configuration, set once and
