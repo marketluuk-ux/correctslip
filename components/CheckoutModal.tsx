@@ -7,6 +7,7 @@ import { fmtKickoff } from "@/lib/format";
 import { BankTransferAccount } from "@/lib/payment";
 import { subscribeToPush, pushSupported } from "@/lib/clientPush";
 import { useTierPrices } from "@/lib/useTierPrices";
+import { getStoredReferral } from "@/lib/referral";
 import { toast } from "@/components/Toaster";
 
 export default function CheckoutModal({
@@ -31,10 +32,12 @@ export default function CheckoutModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [unlockedInstantly, setUnlockedInstantly] = useState(false);
   const [account, setAccount] = useState<BankTransferAccount | null>(null);
   const [pushState, setPushState] = useState<"idle" | "asking" | "on" | "denied" | "unsupported">("idle");
   const [copiedField, setCopiedField] = useState<"amount" | "account" | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
+  const [credit, setCredit] = useState(0);
 
   useEffect(() => {
     fetch("/api/payment-account")
@@ -42,6 +45,25 @@ export default function CheckoutModal({
       .then(setAccount)
       .catch(() => setAccount(null));
   }, []);
+
+  // Look up credit once the typed number looks complete enough to be real
+  // — debounced so it's not firing on every keystroke.
+  useEffect(() => {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) {
+      setCredit(0);
+      return;
+    }
+    const id = setTimeout(() => {
+      fetch(`/api/credit-balance?phone=${encodeURIComponent(phone)}`)
+        .then((r) => r.json())
+        .then((d) => setCredit(d.balance ?? 0))
+        .catch(() => setCredit(0));
+    }, 350);
+    return () => clearTimeout(id);
+  }, [phone]);
+
+  const creditCoversIt = credit >= price;
 
   async function copyValue(text: string, field: "amount" | "account") {
     try {
@@ -68,7 +90,7 @@ export default function CheckoutModal({
       const res = await fetch("/api/checkout/init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matchId: match.id, phone: phone.trim() }),
+        body: JSON.stringify({ matchId: match.id, phone: phone.trim(), ref: getStoredReferral() }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -83,6 +105,11 @@ export default function CheckoutModal({
         toast("Already confirmed — unlocked.");
         onUnlocked();
         onClose();
+        return;
+      }
+      if (data.unlockedWithCredit) {
+        setUnlockedInstantly(true);
+        onUnlocked();
         return;
       }
       setSent(true);
@@ -121,7 +148,18 @@ export default function CheckoutModal({
         </div>
         <div className="m-price mono">{naira(price)}</div>
 
-        {sent ? (
+        {unlockedInstantly ? (
+          <>
+            <div className="m-note" style={{ background: "var(--paper-raised)" }}>
+              Unlocked using your credit — no transfer needed. It&rsquo;s yours right now.
+            </div>
+            <div className="m-actions">
+              <button className="btn" onClick={onClose}>
+                See it
+              </button>
+            </div>
+          </>
+        ) : sent ? (
           <>
             <div className="m-note" style={{ background: "var(--paper-raised)" }}>
               This one&rsquo;s already yours in principle — <strong className="mono">{phone}</strong>{" "}
@@ -146,9 +184,24 @@ export default function CheckoutModal({
         ) : (
           <>
             <div className="m-note">
-              {account ? (
+              {creditCoversIt ? (
                 <>
-                  <div style={{ marginBottom: 10 }}>Send this by bank transfer:</div>
+                  You have <strong className="mono">{naira(credit)}</strong> credit — that fully
+                  covers this pick. No bank transfer needed; unlocking will use{" "}
+                  <strong className="mono">{naira(price)}</strong> of it right away.
+                </>
+              ) : account ? (
+                <>
+                  <div style={{ marginBottom: 10 }}>
+                    {credit > 0 ? (
+                      <>
+                        You have <strong className="mono">{naira(credit)}</strong> credit — not
+                        quite enough for this one yet. Send the full amount by bank transfer:
+                      </>
+                    ) : (
+                      "Send this by bank transfer:"
+                    )}
+                  </div>
                   <div className="copy-row">
                     <div>
                       <div className="copy-label">Amount</div>
@@ -200,7 +253,8 @@ export default function CheckoutModal({
               Every pick here — including this one — has real odds of missing. That&rsquo;s not
               fine print, it&rsquo;s on the homepage: the price buys the work, not the outcome. We
               publish every result, win or lose, on Track Record, so you never have to take our
-              word for it. Transfers aren&rsquo;t refunded if this one doesn&rsquo;t land.
+              word for it. {creditCoversIt ? "Credit isn't refunded" : "Transfers aren't refunded"}{" "}
+              if this one doesn&rsquo;t land.
             </div>
             <label className="ack-row">
               <input
@@ -209,7 +263,7 @@ export default function CheckoutModal({
                 onChange={(e) => setAcknowledged(e.target.checked)}
                 disabled={busy}
               />
-              <span>I understand this pick may not win, and that this transfer isn&rsquo;t refunded either way.</span>
+              <span>I understand this pick may not win, and that {creditCoversIt ? "the credit used isn't" : "this transfer isn't"} refunded either way.</span>
             </label>
 
             {error && (
@@ -219,8 +273,16 @@ export default function CheckoutModal({
               <button className="btn ghost" onClick={onClose} disabled={busy}>
                 Cancel
               </button>
-              <button className="btn" onClick={submit} disabled={busy || !account || !acknowledged}>
-                {busy ? "Sending…" : "I've sent the transfer"}
+              <button
+                className="btn"
+                onClick={submit}
+                disabled={busy || (!creditCoversIt && !account) || !acknowledged}
+              >
+                {busy
+                  ? "Sending…"
+                  : creditCoversIt
+                    ? "Unlock free with credit"
+                    : "I've sent the transfer"}
               </button>
             </div>
           </>

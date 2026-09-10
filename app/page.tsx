@@ -8,12 +8,15 @@ import MatchCard from "@/components/MatchCard";
 import { bumpStreak } from "@/lib/streak";
 import { useTierPrices } from "@/lib/useTierPrices";
 import { subscribeToPush, pushSupported } from "@/lib/clientPush";
+import { buildShareUrl } from "@/lib/referral";
+import ShareButton from "@/components/ShareButton";
 import { toast } from "@/components/Toaster";
 
 export default function HomePage() {
   const [matches, setMatches] = useState<ApiMatch[] | null>(null);
   const [streak, setStreak] = useState(0);
   const [dailyPush, setDailyPush] = useState<"idle" | "asking" | "on" | "denied" | "unsupported">("idle");
+  const [myPhone, setMyPhone] = useState<string | null>(null);
   const prices = useTierPrices();
 
   useEffect(() => {
@@ -21,6 +24,11 @@ export default function HomePage() {
       .then((r) => r.json())
       .then((d) => setMatches(d.matches))
       .catch(() => setMatches([]));
+
+    fetch("/api/me")
+      .then((r) => r.json())
+      .then((d) => setMyPhone(d.sharePhone ?? null))
+      .catch(() => {});
 
     setStreak(bumpStreak());
 
@@ -105,20 +113,26 @@ export default function HomePage() {
             <div className="grid" style={{ gridTemplateColumns: "minmax(260px, 340px)" }}>
               <MatchCard match={featured} onUnlockClick={() => {}} />
             </div>
-            {dailyPush !== "on" && dailyPush !== "unsupported" && (
-              <button
-                className="btn ghost small"
-                style={{ marginTop: 14 }}
-                onClick={enableDailyPush}
-                disabled={dailyPush === "asking"}
-              >
-                {dailyPush === "asking"
-                  ? "Asking…"
-                  : dailyPush === "denied"
-                    ? "Notifications blocked — check browser settings"
-                    : "Notify me when a new free pick drops"}
-              </button>
-            )}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+              {dailyPush !== "on" && dailyPush !== "unsupported" && (
+                <button
+                  className="btn ghost small"
+                  onClick={enableDailyPush}
+                  disabled={dailyPush === "asking"}
+                >
+                  {dailyPush === "asking"
+                    ? "Asking…"
+                    : dailyPush === "denied"
+                      ? "Notifications blocked — check browser settings"
+                      : "Notify me when a new free pick drops"}
+                </button>
+              )}
+              <ShareButton
+                label="Share today's free pick"
+                text={`Free football pick today on CorrectSlip: ${featured.title} — ${featured.pick}. New here? We both get ₦500 credit once you make your first pick.`}
+                url={buildShareUrl("/", myPhone)}
+              />
+            </div>
           </>
         ) : (
           <div className="empty">No free pick live right now — check back soon.</div>

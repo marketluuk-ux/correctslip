@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import NavBar from "@/components/NavBar";
 import Toaster from "@/components/Toaster";
+import ReferralCapture from "@/components/ReferralCapture";
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 const title = "CorrectSlip";
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <NavBar />
         <Toaster />
+        <ReferralCapture />
         {children}
         <footer className="site">
           CorrectSlip — analysis and predictions, not financial advice. Results are historical, not

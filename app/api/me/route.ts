@@ -3,7 +3,10 @@ import { getPhone, normalizePhone, maskPhone, PHONE_COOKIE } from "@/lib/phone";
 
 export async function GET(req: NextRequest) {
   const phone = getPhone(req);
-  return NextResponse.json({ phone: phone ? maskPhone(phone) : null });
+  // `phone` stays masked for display everywhere else; `sharePhone` is the
+  // one place the raw value comes back — it's the owner's own number,
+  // going into a link they're about to send out themselves.
+  return NextResponse.json({ phone: phone ? maskPhone(phone) : null, sharePhone: phone });
 }
 
 // Lets a returning buyer re-identify themselves (e.g. new browser/device)

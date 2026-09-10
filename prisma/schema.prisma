@@ -33,15 +33,30 @@ model Unlock {
   status      String    @default("pending") // pending | paid | rejected
   requestedAt DateTime  @default(now())
   confirmedAt DateTime?
+  referredBy  String?   // another buyer's phone, if they arrived via a share link
 
   @@index([phone])
   @@index([matchId])
   @@index([status])
+  @@index([referredBy])
 }
 
 model Setting {
   key   String @id
   value String
+}
+
+// An append-only ledger, not a mutable balance field — balance is always
+// the sum of rows for a phone. Positive = earned, negative = spent. This
+// is what makes spending safe to do atomically (see lib/referralCredit.ts).
+model ReferralCredit {
+  id        String   @id @default(cuid())
+  phone     String
+  amount    Int
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@index([phone])
 }
 
 model PushSubscription {

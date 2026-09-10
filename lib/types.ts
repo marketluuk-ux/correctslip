@@ -37,3 +37,16 @@ export type PendingUnlock = {
   amount: number;
   requestedAt: string;
 };
+
+export type ReferralsData = {
+  granted: number;
+  spent: number;
+  outstanding: number;
+  recent: {
+    id: string;
+    phone: string;
+    amount: number;
+    reason: string;
+    createdAt: string;
+  }[];
+};

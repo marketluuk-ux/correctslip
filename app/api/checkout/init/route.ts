@@ -4,13 +4,14 @@ import { naira } from "@/lib/tiers";
 import { getTierPrices } from "@/lib/tierPricing";
 import { normalizePhone, PHONE_COOKIE } from "@/lib/phone";
 import { notifyAdmins } from "@/lib/push";
+import { trySpendCredit } from "@/lib/referralCredit";
 
 // No payment gateway here — this creates a "pending" request for a manual
 // bank transfer. An admin confirms it by hand once the transfer lands in
 // the Opay account (see /api/admin/pending and /api/admin/unlocks/[id]).
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const { matchId, phone: rawPhone } = body ?? {};
+  const { matchId, phone: rawPhone, ref } = body ?? {};
 
   const phone = normalizePhone(String(rawPhone ?? ""));
   if (!matchId || !phone) {
@@ -49,20 +50,49 @@ export async function POST(req: NextRequest) {
   const existingPending = await prisma.unlock.findFirst({
     where: { matchId, phone, status: "pending" },
   });
+
+  let unlockedWithCredit = false;
+
   if (!existingPending) {
     const prices = await getTierPrices();
     const price = prices[match.tier as 1 | 2 | 3 | 4];
-    await prisma.unlock.create({
-      data: { matchId, phone, tier: match.tier, amount: price, status: "pending" },
-    });
-    notifyAdmins({
-      title: "New transfer to confirm",
-      body: `${phone} says they sent ${naira(price)} for ${match.title}`,
-      url: "/admin",
-    }).catch(() => {});
+    const referredBy =
+      typeof ref === "string" && ref.trim() && normalizePhone(ref) !== phone
+        ? ref.trim().slice(0, 32)
+        : null;
+
+    // Try referral credit first — atomic, so this can never double-spend
+    // the same ₦500 across two requests. If it covers the full price,
+    // this is a real, instant unlock: no transfer, nothing for an admin
+    // to confirm.
+    const spent = await trySpendCredit(phone, price, `Unlocked ${match.title} with credit`);
+
+    if (spent) {
+      await prisma.unlock.create({
+        data: {
+          matchId,
+          phone,
+          tier: match.tier,
+          amount: price,
+          status: "paid",
+          confirmedAt: new Date(),
+          referredBy,
+        },
+      });
+      unlockedWithCredit = true;
+    } else {
+      await prisma.unlock.create({
+        data: { matchId, phone, tier: match.tier, amount: price, status: "pending", referredBy },
+      });
+      notifyAdmins({
+        title: "New transfer to confirm",
+        body: `${phone} says they sent ${naira(price)} for ${match.title}`,
+        url: "/admin",
+      }).catch(() => {});
+    }
   }
 
-  const res = NextResponse.json({ ok: true, pending: true });
+  const res = NextResponse.json({ ok: true, pending: !unlockedWithCredit, unlockedWithCredit });
   res.cookies.set(PHONE_COOKIE, phone, {
     httpOnly: true,
     sameSite: "lax",

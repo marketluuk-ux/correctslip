@@ -6,6 +6,8 @@ import PhoneGate from "@/components/PhoneGate";
 import { tierInfo, naira } from "@/lib/tiers";
 import { relTime } from "@/lib/format";
 import { subscribeToPush, pushSupported } from "@/lib/clientPush";
+import { buildShareUrl } from "@/lib/referral";
+import ShareButton from "@/components/ShareButton";
 import { toast } from "@/components/Toaster";
 
 type Pending = {
@@ -36,6 +38,7 @@ type MyPicksData = {
 
 export default function MyPicksPage() {
   const [data, setData] = useState<MyPicksData | null>(null);
+  const [credit, setCredit] = useState(0);
   const [pushState, setPushState] = useState<"idle" | "asking" | "on" | "denied" | "unsupported">("idle");
 
   const load = useCallback(() => {
@@ -48,6 +51,17 @@ export default function MyPicksPage() {
     load();
     if (!pushSupported()) setPushState("unsupported");
   }, [load]);
+
+  useEffect(() => {
+    if (!data?.phone) {
+      setCredit(0);
+      return;
+    }
+    fetch(`/api/credit-balance?phone=${encodeURIComponent(data.phone)}`)
+      .then((r) => r.json())
+      .then((d) => setCredit(d.balance ?? 0))
+      .catch(() => setCredit(0));
+  }, [data?.phone]);
 
   async function enableNotify() {
     setPushState("asking");
@@ -102,8 +116,25 @@ export default function MyPicksPage() {
                   </span>
                 </div>
               )}
+              {credit > 0 && (
+                <div className="stat">
+                  <span className="k">Referral credit</span>
+                  <span className="v mono">{naira(credit)}</span>
+                </div>
+              )}
             </div>
           )}
+
+          <div className="banner banner-row" style={{ justifyContent: "space-between" }}>
+            <span>
+              Refer a friend — you both get ₦500 credit once they make their first pick.
+            </span>
+            <ShareButton
+              label="Share your link"
+              text="Come check out CorrectSlip — football picks with a published track record. Use my link and we both get ₦500 credit when you make your first pick:"
+              url={buildShareUrl("/", data.phone)}
+            />
+          </div>
 
           <div className="admin-block">
             <h2 className="section-title">Waiting for confirmation</h2>
@@ -178,6 +209,17 @@ export default function MyPicksPage() {
                         <span className="tier-pill">Tier {t.code}</span>
                         <span className="tag-unlocked">✓ Unlocked</span>
                       </div>
+                      {u.settled && u.result === "win" && (
+                        <div style={{ padding: "0 14px 14px" }}>
+                          <ShareButton
+                            className="btn small"
+                            style={{ width: "100%" }}
+                            label="Share this win"
+                            text={`Called it: ${u.matchTitle} — ${u.pick}. Got it from CorrectSlip before kickoff. Use my link and we both get ₦500 credit on your first pick:`}
+                            url={buildShareUrl("/", data.phone)}
+                          />
+                        </div>
+                      )}
                     </div>
                   );
                 })}

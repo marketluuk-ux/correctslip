@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiMatch, SalesData, PendingUnlock } from "@/lib/types";
+import { ApiMatch, SalesData, PendingUnlock, ReferralsData } from "@/lib/types";
 import { TIERS, tierInfo, naira } from "@/lib/tiers";
 import { fmtKickoff, relTime } from "@/lib/format";
 import { BankTransferAccount } from "@/lib/payment";
@@ -18,6 +18,7 @@ export default function AdminPage() {
   const [editingMatch, setEditingMatch] = useState<ApiMatch | null>(null);
   const [sales, setSales] = useState<SalesData | null>(null);
   const [pending, setPending] = useState<PendingUnlock[]>([]);
+  const [referrals, setReferrals] = useState<ReferralsData | null>(null);
   const [account, setAccount] = useState<BankTransferAccount | null>(null);
   const [savingAccount, setSavingAccount] = useState(false);
   const [tierPrices, setTierPrices] = useState<TierPricesMap | null>(null);
@@ -49,6 +50,12 @@ export default function AdminPage() {
       .then(setTierPrices);
   }, []);
 
+  const loadReferrals = useCallback(() => {
+    fetch("/api/admin/referrals")
+      .then((r) => r.json())
+      .then(setReferrals);
+  }, []);
+
   const loadSales = useCallback(() => {
     fetch("/api/admin/sales").then((r) => {
       if (r.status === 401) {
@@ -70,8 +77,9 @@ export default function AdminPage() {
       loadPending();
       loadAccount();
       loadTierPrices();
+      loadReferrals();
     }
-  }, [authed, loadMatches, loadPending, loadAccount, loadTierPrices]);
+  }, [authed, loadMatches, loadPending, loadAccount, loadTierPrices, loadReferrals]);
 
   // Poll for new pending transfers while this tab is open — the push
   // notification (if granted) covers the "tab closed" case; this covers
@@ -243,6 +251,7 @@ export default function AdminPage() {
       toast(action === "confirm" ? "Transfer confirmed — pick unlocked." : "Request rejected.");
       loadPending();
       loadSales();
+      loadReferrals();
     }
   }
 
@@ -352,6 +361,62 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+          </>
+        )}
+      </div>
+
+      {/* Referral credits — the growth loop working, or not yet. ₦500 to
+          both sides on a referred buyer's first confirmed purchase. */}
+      <div className="admin-block">
+        <h2 className="section-title">Referral credits</h2>
+        <p className="section-sub">
+          Every buyer can share a link that credits both people ₦500 when their friend&rsquo;s
+          first pick is confirmed. This is that ledger — nothing here needs action from you, it
+          runs on its own from the confirm button above.
+        </p>
+        {referrals && (
+          <>
+            <div className="dash-stats">
+              <div className="dash-tile">
+                <span className="k">Given out</span>
+                <span className="v mono">{naira(referrals.granted)}</span>
+              </div>
+              <div className="dash-tile">
+                <span className="k">Redeemed</span>
+                <span className="v mono">{naira(referrals.spent)}</span>
+              </div>
+              <div className="dash-tile">
+                <span className="k">Still outstanding</span>
+                <span className="v mono">{naira(referrals.outstanding)}</span>
+              </div>
+            </div>
+            {referrals.recent.length > 0 && (
+              <div className="table-wrap">
+                <table className="stack">
+                  <thead>
+                    <tr>
+                      <th>When</th>
+                      <th>Phone</th>
+                      <th className="mono">Amount</th>
+                      <th>Why</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {referrals.recent.map((r) => (
+                      <tr key={r.id}>
+                        <td className="mono" data-label="When">{relTime(r.createdAt)}</td>
+                        <td className="mono" data-label="Phone">{r.phone}</td>
+                        <td className="mono" data-label="Amount">
+                          {r.amount > 0 ? "+" : ""}
+                          {naira(r.amount)}
+                        </td>
+                        <td data-label="Why">{r.reason}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </>
         )}
       </div>
