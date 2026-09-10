@@ -93,6 +93,26 @@ button { font-family: inherit; }
   50% { opacity: 0.45; transform: scale(0.8); }
 }
 
+/* Pending transfer cards — always cards, never a dense table, on any
+   screen size. The two numbers an admin actually has to cross-check
+   against their banking app (amount, sender's number) are set large and
+   isolated in their own box so they can't be misread at a glance. */
+.pending-card { background: var(--card-bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); padding: 16px; margin-bottom: 12px; }
+.pending-card:last-child { margin-bottom: 0; }
+.pending-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.pending-card-time { font-size: 11px; color: var(--ink-soft); }
+.pending-card-match { font-family: 'Big Shoulders Display'; font-weight: 700; font-size: 20px; text-transform: uppercase; line-height: 1.1; }
+.pending-card-comp { font-size: 12px; color: var(--ink-soft); margin-top: 3px; margin-bottom: 14px; }
+.pending-card-key { display: flex; gap: 10px; padding: 12px 14px; background: var(--paper-raised); border-radius: 6px; margin-bottom: 14px; }
+.pending-card-key > div { flex: 1; min-width: 0; }
+.pending-card-key .k-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); margin-bottom: 3px; }
+.pending-card-amount { font-size: 21px; font-weight: 700; color: var(--floodlight-ink); }
+.pending-card-phone { font-size: 17px; font-weight: 700; color: var(--ink); word-break: break-all; }
+.pending-card-actions { display: flex; gap: 10px; }
+.pending-card-actions .btn { flex: 1; padding: 13px 10px; font-size: 13px; }
+.pending-card-asking { background: var(--paper-raised); }
+.pending-card-question { font-size: 14.5px; line-height: 1.55; margin-bottom: 16px; }
+
 @media (max-width: 640px) {
   .tabs-desktop { display: none; }
   .hamburger { display: flex; margin-left: auto; }

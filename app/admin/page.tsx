@@ -8,6 +8,7 @@ import { BankTransferAccount } from "@/lib/payment";
 import { subscribeToPush, pushSupported } from "@/lib/clientPush";
 import { toast } from "@/components/Toaster";
 import EditMatchModal from "@/components/EditMatchModal";
+import PendingTransferCard from "@/components/PendingTransferCard";
 import type { TierPricesMap } from "@/lib/useTierPrices";
 
 export default function AdminPage() {
@@ -381,57 +382,11 @@ export default function AdminPage() {
             </button>
           </div>
         )}
-        <div className="table-wrap">
-          <table className="stack">
-            <thead>
-              <tr>
-                <th>Requested</th>
-                <th>Fixture</th>
-                <th>Tier</th>
-                <th className="mono">Amount</th>
-                <th>Phone</th>
-                <th>Decision</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pending.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ color: "var(--ink-soft)" }}>
-                    No pending transfers.
-                  </td>
-                </tr>
-              ) : (
-                pending.map((p) => (
-                  <tr key={p.id}>
-                    <td className="mono" data-label="Requested">{relTime(p.requestedAt)}</td>
-                    <td data-label="Fixture">
-                      <div className="fixture-cell">
-                        <span className="t">{p.matchTitle}</span>
-                        <span className="s">{p.competition}</span>
-                      </div>
-                    </td>
-                    <td data-label="Tier">Tier {tierInfo(p.tier).code}</td>
-                    <td className="mono" data-label="Amount">{naira(p.amount)}</td>
-                    <td className="mono" data-label="Phone">{p.phone}</td>
-                    <td data-label="Decision">
-                      <span className="actions-cell">
-                        <button className="btn small" onClick={() => decide(p.id, "confirm")}>
-                          Confirm
-                        </button>
-                        <button
-                          className="btn ghost small"
-                          onClick={() => decide(p.id, "reject")}
-                        >
-                          Reject
-                        </button>
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {pending.length === 0 ? (
+          <div className="empty">Nothing waiting. New requests show up here.</div>
+        ) : (
+          pending.map((p) => <PendingTransferCard key={p.id} item={p} onDecide={decide} />)
+        )}
       </div>
 
       {/* Manage matches third — the daily operational work (settle,
@@ -495,7 +450,7 @@ export default function AdminPage() {
                               {m.result === "win" ? "WON" : "LOST"}
                             </span>
                             <button className="btn ghost small" onClick={() => reopen(m.id)}>
-                              Reopen
+                              Undo this result
                             </button>
                           </span>
                         ) : (
